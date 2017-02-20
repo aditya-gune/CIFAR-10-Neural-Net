@@ -1,5 +1,5 @@
 """
-INSERT YOUR NAME HERE
+Aditya Gune
 """
 
 
@@ -65,8 +65,7 @@ class SigmoidCrossEntropy(object):
     def forward(self, x, y):
         return self.y*np.log(self.x)+(1-self.y)*np.log(1-self.x)
         # DEFINE forward function
-    def getSoftmax(self, x):
-        return (1/(1+np.exp(x)))
+    
     
     def backward(
         self, 
@@ -103,13 +102,20 @@ class MLP(object):
         print("F")
     # INSERT CODE for testing the network
 # ADD other operations and data entries in MLP if needed
-
+def getSoftmax(x):
+        print("---------------\n\n shiftx:")
+        shiftx = x - np.max(x)
+        print(shiftx)
+        print("exps:")
+        exps = np.exp(shiftx)
+        print(exps)
+        return exps / np.sum(exps)
 if __name__ == '__main__':
 
-    #data = cPickle.load(open('cifar_2class_py2.p', 'rb'))
+    data = cPickle.load(open('cifar_2class_py2.p', 'rb'))
 
-    #train_x = data['train_data']
-    #train_y = data['train_labels']
+    train_x = data['train_data']
+    train_y = data['train_labels']
     test_x = data['test_data']
     test_y = data['test_labels']
     
@@ -118,36 +124,38 @@ if __name__ == '__main__':
     num_epochs = 10
     num_batches = 1000
     hidden_units = 3
+    num_examples, input_dims = (int(train_x.shape[0]), int(train_x.shape[1]))
     mlp = MLP(input_dims, hidden_units)
+
     
+#    train_x = [[1,1,2],[2,1,1],[1,1,1],[2,2,2]]
+#    train_x = np.array(train_x)
+#    train_y=[[.001],[.999],[.999],[.001]]
+#    train_y = np.array(train_y)
     
-    train_x = [[1,1,2],[2,1,1],[1,1,1],[2,2,2]]
-    train_x = np.array(train_x)
-    train_y=[[.001],[.999],[.999],[.001]]
-    train_y = np.array(train_y)
-    num_examples, input_dims = train_x.shape
-    weights_h = [[-0.1, 1,0.1],[1,0.1,-1],[0,-0.1,1]]
-    w_2 = [[-0.6],[0.9],[-0.3]] #[[-0.6, 0.4],[0.9,0.1],[-0.3, -0.8]]
-    w_2 = np.array(w_2)
+    weights_h = np.random.random((input_dims, 1)) * 2.0/input_dims
     w = np.array(weights_h)
+    w_2 = np.random.random((input_dims, 1)) * 2.0/input_dims
+    w_2 = np.array(w_2)
     
-    b = [0.01, 0.5, -0.11]
+    
+    b = np.random.random((1, train_x.shape[1]))
 
     b=np.array(b)
     print("linear transform input layer -> hidden layer")
-    g = numpy.dot(train_x, w)+b
+    g = np.dot(train_x, w)+b
     print(g)
     relu = ReLU(g)
     print("output of hidden layer after relu")
     hidden_out = relu.forward(g)
     print(hidden_out)
     print("linear transform hidden layer -> output layer")
-    out = numpy.dot(hidden_out, w_2)+0.01
+    out = np.dot(hidden_out, w_2)+b
     print(out)
     sce = SigmoidCrossEntropy(out, train_y)
     print("after softmax")
-    #softmax = sce.getSoftmax(out)
-    softmax = sce.getSoftmax(-out)
+    #softmax = sce.getSoftmax(-out)
+    softmax = getSoftmax(out)
     print(softmax)
     print("Get cross entropy loss")
     loss = train_y*np.log(softmax)+((1-train_y)*np.log(1-softmax))
@@ -156,6 +164,9 @@ if __name__ == '__main__':
     avg_loss = np.mean(loss)
     print("average loss")
     print(avg_loss)
+    
+    
+    
 #    for epoch in xrange(num_epochs):
 #        
 #    # INSERT YOUR CODE FOR EACH EPOCH HERE
