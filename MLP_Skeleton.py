@@ -65,7 +65,10 @@ class SigmoidCrossEntropy(object):
     def forward(self, x, y):
         return self.y*np.log(self.x)+(1-self.y)*np.log(1-self.x)
         # DEFINE forward function
-    
+    def getSoftmax(self, x):
+        exps = np.exp(x)
+        prob = exps /np.sum(exps, axis=1, keepdims=True)
+        return prob
     
     def backward(
         self, 
@@ -102,14 +105,20 @@ class MLP(object):
         print("F")
     # INSERT CODE for testing the network
 # ADD other operations and data entries in MLP if needed
-def getSoftmax(x):
-        print("---------------\n\n shiftx:")
-        shiftx = x - np.max(x)
-        print(shiftx)
-        print("exps:")
-        exps = np.exp(shiftx)
-        print(exps)
-        return exps / np.sum(exps)
+def normalize(z, avg, stdev):
+    outctr = 1
+    while outctr > 0:
+        outctr = len(z[np.where(abs(z - avg) > stdev)])
+        print("outctr = ", outctr, "\nnormalizing...")
+        z[np.where(abs(z - avg) > stdev)] = avg
+        outctr = len(z[np.where(abs(z - avg) > stdev)])
+        print("outctr = ", outctr)
+
+def debugprint(softmax):
+    print ("max = ",np.max(softmax), "min =", np.min(softmax))
+    print ("mean = ", np.mean(softmax), "std = ", np.std(softmax))
+    
+       
 if __name__ == '__main__':
 
     data = cPickle.load(open('cifar_2class_py2.p', 'rb'))
@@ -126,41 +135,71 @@ if __name__ == '__main__':
     hidden_units = 3
     num_examples, input_dims = (int(train_x.shape[0]), int(train_x.shape[1]))
     mlp = MLP(input_dims, hidden_units)
-
+    alpha = 0.001 #learning rate
+    r_lambda = 0.001 #reg lambda
     
-#    train_x = [[1,1,2],[2,1,1],[1,1,1],[2,2,2]]
-#    train_x = np.array(train_x)
-#    train_y=[[.001],[.999],[.999],[.001]]
-#    train_y = np.array(train_y)
     
     weights_h = np.random.random((input_dims, 1)) * 2.0/input_dims
     w = np.array(weights_h)
     w_2 = np.random.random((input_dims, 1)) * 2.0/input_dims
     w_2 = np.array(w_2)
+
     
     
     b = np.random.random((1, train_x.shape[1]))
-
+    b_2 = np.random.random((1, train_x.shape[1]))
     b=np.array(b)
-    print("linear transform input layer -> hidden layer")
+    b_2 = np.array(b_2)
+    #Apply linear transform, send to hidden layer:
+    # input layer -> hidden layer
     g = np.dot(train_x, w)+b
-    print(g)
+
+    
+    #Apply ReLU Activation function
     relu = ReLU(g)
-    print("output of hidden layer after relu")
-    hidden_out = relu.forward(g)
-    print(hidden_out)
-    print("linear transform hidden layer -> output layer")
-    out = np.dot(hidden_out, w_2)+b
-    print(out)
+    z = relu.forward(g)
+
+    #normalize data 
+    stdev = np.std(z)
+    avg = np.mean(z)
+    
+#    print ("max = ",np.max(z), "min =", np.min(z))
+#    print ("mean = ", avg, "std = ", stdev)
+#    
+    #normalize(z, avg, stdev)
+    
+    #Apply linear transform to hidden layer
+    out = np.dot(z, w_2)+b_2
+    #print(out)
+    
     sce = SigmoidCrossEntropy(out, train_y)
-    print("after softmax")
-    #softmax = sce.getSoftmax(-out)
-    softmax = getSoftmax(out)
-    print(softmax)
-    print("Get cross entropy loss")
+    softmax = sce.getSoftmax(-out)
+    #softmax = (np.exp(out)#getSoftmax(-out)
+#    print("after softmax")
+
+    d_3 = softmax
+    #d_3[range(num_examples), train_y] -= 1
+    d_wt_2 = np.dot(z.T, d_3)
+    normalize(d_wt_2, np.mean(d_wt_2), np.std(d_wt_2))
+    
+    
+    d_bias_2 = np.sum(d_3, axis=0, keepdims=True)
+    d_2 = np.dot(w_2.T, d_3.T)#* (1 - np.power(z, 2))
+    
+    d_wt_1 = np.dot(train_x.T, d_2.T)
+    d_bias_1 = np.sum(d_3, axis=0)
+    
+    
+    #debugprint(d_wt_1)
+    
+    #Gradient Descent
+    weights_h += -alpha * d_wt_1
+    w_2 = w_2 + (-alpha * d_wt_2[1])
+    b = b+ (-alpha * d_bias_1)
+    b_2 += -alpha * d_bias_2
+    
     loss = train_y*np.log(softmax)+((1-train_y)*np.log(1-softmax))
     loss = -loss
-    print(loss)
     avg_loss = np.mean(loss)
     print("average loss")
     print(avg_loss)
